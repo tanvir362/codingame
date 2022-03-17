@@ -21,17 +21,19 @@ class Buster(Entity):
         super().__init__(id, x, y)
         self.team_id = entity_type
         self.is_mine = entity_type == game.my_team_id
-        self.is_carrying = state == 1
+        self.is_carrying = state==1
+        self.is_stunned = state==2
         self.carrying_ghost_id = value # -1 if not carrying
+        self.turns_need_to_be_normal = value
 
-        self.going_toward = game.my_base
+        self.going_toward = (-1, -1)
 
     def update_property(self, x, y, state, value):
         super().update_property(x, y)
         self.is_carrying = state == 1
+        self.is_stunned = state==2
         self.carrying_ghost_id = value
-
-
+        self.turns_need_to_be_normal = value
 
     def move(self, point):
         print(f"MOVE {point[0]} {point[1]}")
@@ -42,15 +44,32 @@ class Buster(Entity):
     def release(self):
         print("RELEASE")
 
+    def stun(self, buster):
+        print(f"STUN {buster.id}")
+
     def find_nearest_ghost(self):
-        try:
-            ghosts = sorted([ght for ght in game.ghosts.values() if not ght.is_in_my_base], key=lambda ghost: ghost.calc_dist(self.position))
+        ghosts = sorted([ght for ght in game.ghosts.values() if not ght.is_in_my_base], key=lambda ghost: ghost.calc_dist(self.position))
 
-            return ghosts[0]
+        for ghost in ghosts:
+            nearest_buster = ghost.find_nearest_buster()
+            if nearest_buster:
+                if nearest_buster.id == self.id:
+                    return ghost
 
-        except Exception as e:
-            print(str(e), file=sys.stderr, flush=True)
-            return None
+
+        return None
+
+    def get_buster_to_stun(self):
+        busters = [buster for buster in game.busters.values() if (not buster.is_mine and buster.is_visible and self.calc_dist(buster.position)<=1760)]
+        
+        for buster in busters:
+            if buster.is_stunned:
+                if buster.turns_need_to_be_normal<=5:
+                    return buster
+            else:
+                return buster
+
+        return None
 
     
     def act(self):
@@ -84,14 +103,23 @@ class Buster(Entity):
                     print(f'{self.id} moved toward {n_ghost.id} ghost', file=sys.stderr, flush=True)
 
             else:
-                options = [(4000, 2250), (12000, 2250), (4000, 6750), (12000, 6750)]
-                pick = self.going_toward
-                if self.calc_dist(self.going_toward) <= 50:
-                    pick = random.choice(options)
+                #move random or stun
 
-                self.going_toward = pick
-                self.move(pick)
-                print(f'{self.id} moved random', file=sys.stderr, flush=True)
+                buster_to_stun = self.get_buster_to_stun()
+                if buster_to_stun:
+                    self.stun(buster_to_stun)
+                    print(f"{self.id} stuned {buster_to_stun.id}", file=sys.stderr, flush=True)
+                
+                else:
+                    options = [(2000, 1125), (14000, 1125), (2000, 7875), (14000, 7875)]
+                    # options = [(1900, 1100), (14100, 1100), (1900, 7900), (14100, 7900)]
+                    pick = self.going_toward
+                    if self.calc_dist(self.going_toward) <= 810 or self.going_toward==(-1, -1):
+                        pick = random.choice([opt for opt in options if opt!=self.going_toward])
+
+                    self.going_toward = pick
+                    self.move(pick)
+                    print(f'{self.id} moved random', file=sys.stderr, flush=True)
                 
             
     def __str__(self):
@@ -110,6 +138,19 @@ class Ghost(Entity):
         self.state = state
         self.attempting_by = value
 
+    #nearest among my busters
+    def find_nearest_buster(self):
+        busters = sorted((bstr for bstr in game.busters.values() if bstr.is_mine), key=lambda b: self.calc_dist(b.position))
+
+        for buster in busters:
+            if buster.is_stunned:
+                if buster.turns_need_to_be_normal <= 5:
+                    return buster
+            else:
+                return buster
+
+        return None
+
     def __str__(self):
         return f"id: {self.id} position: {self.position} attempting by: {self.attempting_by}"
 
@@ -120,6 +161,7 @@ class Game:
         self.ghost_count = ghost_count
         self.my_team_id = my_team_id
         self.my_base = (0, 0) if my_team_id == 0 else (16000, 9000)
+        self.rival_base = (0, 0) if my_team_id == 1 else (16000, 9000)
 
         self.busters = {}
         self.ghosts = {}
@@ -130,7 +172,6 @@ class Game:
 
         for buster in self.busters.values():
             buster.is_visible = False
-
 
 
 # Send your busters out into the fog to trap ghosts and bring them home!
@@ -160,15 +201,6 @@ while True:
             game.busters[entity_id] = buster
             buster.update_property(x, y, state, value)
             # print(buster, file=sys.stderr, flush=True)
-
-
-    # for i in range(busters_per_player):
-
-    #     # Write an action using print
-    #     # To debug: print("Debug messages...", file=sys.stderr, flush=True)
-
-    #     # MOVE x y | BUST id | RELEASE
-    #     print("MOVE 8000 4500")
 
     for buster_id in game.busters:
         buster = game.busters[buster_id]
