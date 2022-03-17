@@ -1,2 +1,2 @@
 # codingame
-Solutions of CodinGame puzzles
+Solutions of [CodinGame](https://www.codingame.com/servlet/urlinvite?u=1694829) puzzles
