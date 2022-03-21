@@ -150,6 +150,12 @@ class Snaffle(Entity):
 
         return None
 
+
+class Bludger(Entity):
+    def __init__(self, entity_id, x, y, vx, vy, state):
+        super().__init__(entity_id, x, y, vx, vy)
+
+
 class Team:
     def __init__(self, team_id, score=None, magic=None):
         self.id = team_id
@@ -157,6 +163,27 @@ class Team:
         self.score = score
         self.magic = magic
         self.wizards = {}
+
+
+class Game:
+    def __init__(self):
+        self.snaffles = {}
+        self.bludgers = {}
+
+    def get_snaffles(self):
+
+        return [
+            snaffle
+            for snaffle in self.snaffles.values()
+            if not snaffle.is_removed
+        ]
+
+    def get_bludgers(self):
+
+        return [
+            bludger
+            for bludger in self.bludgers.values()
+        ]
 
 game_snaffles = {}
 def end_turn():
