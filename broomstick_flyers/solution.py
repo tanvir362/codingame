@@ -56,6 +56,18 @@ class Wizard(Entity):
         # self.target = None
         print(f"THROW {point[0]} {point[1]} {power}")
 
+    def snaffles_in_my_area(self):
+        snafflles = [
+            snfl 
+            for snfl in game_snaffles.values() 
+            if (snfl.is_removed == False
+                and 
+                [abs(my_team.goal[0]-snfl.position[0])<=8000, abs(my_team.goal[0]-snfl.position[0])>8000][self.id])
+            
+        ]
+
+        return snafflles
+
     def get_behind_snaffle(self):
         behind_snaffles = sorted((snfl for snfl in game_snaffles.values() if not snfl.is_removed and snfl.get_distance(my_team.goal)<self.get_distance(my_team.goal)), key=lambda s:s.get_distance(my_team.goal), reverse=True)
 
@@ -65,7 +77,14 @@ class Wizard(Entity):
         return None
 
     def get_nearest_snaffle(self):
-        snaffles = sorted((snaffle for snaffle in game_snaffles.values() if (not snaffle.is_removed and snaffle.targetted_by==None)), key=lambda s: self.get_distance(s.position))
+        # possible_targets = self.snaffles_in_my_area()
+
+        snaffles = sorted((
+            snaffle 
+            for snaffle in game_snaffles.values()
+            # for snaffle in [game_snaffles.values(), possible_targets][len(possible_targets)>0]
+            if (not snaffle.is_removed and snaffle.targetted_by==None)
+        ), key=lambda s: self.get_distance(s.position))
         # print([(snf.id, round(self.get_distance(snf.position), 2)) for snf in snaffles], file=sys.stderr, flush=True)
 
         for snaffle in snaffles:
@@ -101,6 +120,9 @@ class Wizard(Entity):
             if self.target:
                 self.target.targetted_by = None
                 self.target = None
+            
+            
+            
             self.move(130, self.get_nearest_snaffle() or [snfl for snfl in game_snaffles.values() if not snfl.is_removed][0])
 
 
