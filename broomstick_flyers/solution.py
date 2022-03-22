@@ -95,7 +95,7 @@ class Wizard(Entity):
         # print([(snf.id, round(self.get_distance(snf.position), 2)) for snf in snaffles], file=sys.stderr, flush=True)
 
         for snaffle in snaffles:
-            snaffle_n_wizard = snaffle.get_nearest_wizard()
+            snaffle_n_wizard = snaffle.get_nearest_my_wizard()
 
             if snaffle_n_wizard != self:
                 continue
@@ -129,15 +129,19 @@ class Wizard(Entity):
                 self.target = None
             
             snafflle_near_goal = self.snaffle_to_near_goal()
-            if snafflle_near_goal:
-                print(f'ACCIO {snafflle_near_goal.id}')
+            if snafflle_near_goal and my_team.magic >=20:
+                if self.id == 0:
+                    print(f'ACCIO {snafflle_near_goal.id}')
+                else:
+                    print(f"PETRIFICUS {snafflle_near_goal.get_nearest_enemy_wizard().id}")
+
             else:
                 snaffle = self.get_nearest_snaffle() or [snfl for snfl in game_snaffles.values() if not snfl.is_removed][0]
 
                 my_dist_f_mgoal = self.get_distance(my_team.goal)
                 snfl_dist_f_mgoal = snaffle.get_distance(my_team.goal)
 
-                if  my_dist_f_mgoal>snfl_dist_f_mgoal  and abs(my_dist_f_mgoal-snfl_dist_f_mgoal)>=3500:
+                if my_team.magic>=20 and my_dist_f_mgoal>snfl_dist_f_mgoal  and (abs(my_dist_f_mgoal-snfl_dist_f_mgoal)>=3500 and abs(my_dist_f_mgoal-snfl_dist_f_mgoal)<5500):
                     # self.target = snaffle
                     # snaffle.targetted_by = self
 
@@ -160,7 +164,7 @@ class Snaffle(Entity):
         self.is_grabbed = state==1
 
     #nearest wizard among my wizards
-    def get_nearest_wizard(self):
+    def get_nearest_my_wizard(self):
         # print(f'finding nearest wizard for {self.id}', file=sys.stderr, flush=True)
 
         wizards = sorted((wizard for wizard in my_team.wizards.values() if wizard.target==None), key=lambda w: self.get_distance(w.position))
@@ -169,6 +173,14 @@ class Snaffle(Entity):
             return wizards[0]
 
         return None
+
+    def get_nearest_enemy_wizard(self):
+        enemy_n_wizards = sorted(
+            opponent_team.wizards.values(),
+            key=lambda w: self.get_distance(w.position)
+        )
+
+        return enemy_n_wizards[0]
 
 
 class Bludger(Entity):
@@ -221,6 +233,7 @@ opponent_team = Team([1, 0][my_team_id])
 # game loop
 while True:
     my_score, my_magic = [int(i) for i in input().split()]
+    my_team.magic = my_magic
     opponent_score, opponent_magic = [int(i) for i in input().split()]
     entities = int(input())  # number of entities still in game
     for i in range(entities):
