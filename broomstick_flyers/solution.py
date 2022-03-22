@@ -76,6 +76,13 @@ class Wizard(Entity):
 
         return None
 
+    def snaffle_to_near_goal(self):
+        for snaffle in [snfl for snfl in game_snaffles.values() if not snfl.is_removed]:
+            if snaffle.get_distance(my_team.goal) <= 2000:
+                return snaffle
+
+        return None
+
     def get_nearest_snaffle(self):
         # possible_targets = self.snaffles_in_my_area()
 
@@ -121,9 +128,22 @@ class Wizard(Entity):
                 self.target.targetted_by = None
                 self.target = None
             
-            
-            
-            self.move(130, self.get_nearest_snaffle() or [snfl for snfl in game_snaffles.values() if not snfl.is_removed][0])
+            snafflle_near_goal = self.snaffle_to_near_goal()
+            if snafflle_near_goal:
+                print(f'ACCIO {snafflle_near_goal.id}')
+            else:
+                snaffle = self.get_nearest_snaffle() or [snfl for snfl in game_snaffles.values() if not snfl.is_removed][0]
+
+                my_dist_f_mgoal = self.get_distance(my_team.goal)
+                snfl_dist_f_mgoal = snaffle.get_distance(my_team.goal)
+
+                if  my_dist_f_mgoal>snfl_dist_f_mgoal  and abs(my_dist_f_mgoal-snfl_dist_f_mgoal)>=3500:
+                    # self.target = snaffle
+                    # snaffle.targetted_by = self
+
+                    print(f'ACCIO {snaffle.id}')
+                else:
+                    self.move(130, snaffle)
 
 
 
