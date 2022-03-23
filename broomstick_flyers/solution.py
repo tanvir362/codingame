@@ -1,6 +1,21 @@
 import random
 import sys
 import math
+from turtle import position
+
+
+def sign(p1, p2, p3):
+    return (p1[0]-p3[0]) * (p2[1]-p3[1]) - (p2[0]-p3[0]) * (p1[1]-p3[1])
+
+def point_in_triangle(v1, v2, v3, pt):
+    d1 = sign(pt, v1, v2)
+    d2 = sign(pt, v2, v3)
+    d3 = sign(pt, v3, v1)
+
+    has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+    has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+
+    return not(has_neg and has_pos)
 
 
 class Entity:
@@ -56,6 +71,7 @@ class Wizard(Entity):
         # self.target = None
         print(f"THROW {point[0]} {point[1]} {power}")
 
+    #not using
     def snaffles_in_my_area(self):
         snafflles = [
             snfl 
@@ -68,6 +84,7 @@ class Wizard(Entity):
 
         return snafflles
 
+    #not using
     def get_behind_snaffle(self):
         behind_snaffles = sorted((snfl for snfl in game_snaffles.values() if not snfl.is_removed and snfl.get_distance(my_team.goal)<self.get_distance(my_team.goal)), key=lambda s:s.get_distance(my_team.goal), reverse=True)
 
@@ -108,6 +125,18 @@ class Wizard(Entity):
         
         return None
 
+    def can_cast_flipendo(self):
+        #need add budgers next
+        for entity in opponent_team.wizards.values():
+            if point_in_triangle(self.position, opponent_team.goal_bar1, opponent_team.goal_bar2, entity.position):
+                return None
+
+        for snfl in [s for s in game_snaffles.values() if not s.is_removed]:
+            if point_in_triangle(self.position, opponent_team.goal_bar1, opponent_team.goal_bar2, snfl.position):
+                return snfl
+
+        return None
+
     def act(self):
         print(f"acting {self.id}:", file=sys.stderr, flush=True)
         if self.is_holding:
@@ -141,7 +170,12 @@ class Wizard(Entity):
                 my_dist_f_mgoal = self.get_distance(my_team.goal)
                 snfl_dist_f_mgoal = snaffle.get_distance(my_team.goal)
 
-                if my_team.magic>=20 and my_dist_f_mgoal>snfl_dist_f_mgoal  and (abs(my_dist_f_mgoal-snfl_dist_f_mgoal)>=3500 and abs(my_dist_f_mgoal-snfl_dist_f_mgoal)<5500):
+                snfl_to_flipendo = self.can_cast_flipendo()
+
+                if my_team.magic >=20 and snfl_to_flipendo:
+
+                    print(f"FLIPENDO {snfl_to_flipendo.id}")
+                elif my_team.magic>=20 and my_dist_f_mgoal>snfl_dist_f_mgoal  and (abs(my_dist_f_mgoal-snfl_dist_f_mgoal)>=3500 and abs(my_dist_f_mgoal-snfl_dist_f_mgoal)<5500):
                     # self.target = snaffle
                     # snaffle.targetted_by = self
 
@@ -190,8 +224,11 @@ class Bludger(Entity):
 
 class Team:
     def __init__(self, team_id, score=None, magic=None):
+        goal_pos = [(0, 3750), (16000, 3750)][team_id]
         self.id = team_id
-        self.goal = [(0, 3750), (16000, 3750)][team_id]
+        self.goal = goal_pos
+        self.goal_bar1 = (goal_pos[0], goal_pos[1]-500)
+        self.goal_bar2 = (goal_pos[0], goal_pos[1]+500)
         self.score = score
         self.magic = magic
         self.wizards = {}
