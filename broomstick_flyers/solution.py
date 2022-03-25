@@ -1,7 +1,6 @@
 import random
 import sys
 import math
-from turtle import position
 
 
 def sign(p1, p2, p3):
@@ -23,6 +22,10 @@ class Entity:
         self.id = entity_id
         self.position = (x, y)
         self.speed = (vx, vy)
+    
+    @property
+    def speed_value(self):
+        return math.hypot(self.speed[0], self.speed[1])
 
     def update_properties(self, x, y, vx, vy):
         self.position = (x, y)
@@ -75,7 +78,7 @@ class Wizard(Entity):
     def snaffles_in_my_area(self):
         snafflles = [
             snfl 
-            for snfl in game_snaffles.values() 
+            for snfl in game.snaffles.values() 
             if (snfl.is_removed == False
                 and 
                 [abs(my_team.goal[0]-snfl.position[0])<=8000, abs(my_team.goal[0]-snfl.position[0])>8000][self.id])
@@ -86,7 +89,7 @@ class Wizard(Entity):
 
     #not using
     def get_behind_snaffle(self):
-        behind_snaffles = sorted((snfl for snfl in game_snaffles.values() if not snfl.is_removed and snfl.get_distance(my_team.goal)<self.get_distance(my_team.goal)), key=lambda s:s.get_distance(my_team.goal), reverse=True)
+        behind_snaffles = sorted((snfl for snfl in game.snaffles.values() if not snfl.is_removed and snfl.get_distance(my_team.goal)<self.get_distance(my_team.goal)), key=lambda s:s.get_distance(my_team.goal), reverse=True)
 
         if behind_snaffles:
             return behind_snaffles[0]
@@ -94,7 +97,7 @@ class Wizard(Entity):
         return None
 
     def snaffle_to_near_goal(self):
-        for snaffle in [snfl for snfl in game_snaffles.values() if not snfl.is_removed]:
+        for snaffle in [snfl for snfl in game.snaffles.values() if not snfl.is_removed]:
             if snaffle.get_distance(my_team.goal) <= 2000:
                 return snaffle
 
@@ -105,8 +108,8 @@ class Wizard(Entity):
 
         snaffles = sorted((
             snaffle 
-            for snaffle in game_snaffles.values()
-            # for snaffle in [game_snaffles.values(), possible_targets][len(possible_targets)>0]
+            for snaffle in game.snaffles.values()
+            # for snaffle in [game.snaffles.values(), possible_targets][len(possible_targets)>0]
             if (not snaffle.is_removed and snaffle.targetted_by==None)
         ), key=lambda s: self.get_distance(s.position))
         # print([(snf.id, round(self.get_distance(snf.position), 2)) for snf in snaffles], file=sys.stderr, flush=True)
@@ -131,9 +134,13 @@ class Wizard(Entity):
             if point_in_triangle(self.position, opponent_team.goal_bar1, opponent_team.goal_bar2, entity.position):
                 return None
 
-        for snfl in [s for s in game_snaffles.values() if not s.is_removed]:
+        print('wizerd or buldger in triangle', file=sys.stderr, flush=True)
+
+        for snfl in [s for s in game.snaffles.values() if not s.is_removed]:
             if point_in_triangle(self.position, opponent_team.goal_bar1, opponent_team.goal_bar2, snfl.position):
                 return snfl
+
+            print(snfl.id, 'not in tringle', file=sys.stderr, flush=True)
 
         return None
 
@@ -151,7 +158,7 @@ class Wizard(Entity):
             #     print(f"{self.id} moved toward {self.target.id}", file=sys.stderr, flush=True)
 
             # else:
-            #     self.move(130, self.get_nearest_snaffle() or [snfl for snfl in game_snaffles.values() if not snfl.is_removed][0])
+            #     self.move(130, self.get_nearest_snaffle() or [snfl for snfl in game.snaffles.values() if not snfl.is_removed][0])
             
             if self.target:
                 self.target.targetted_by = None
@@ -165,7 +172,7 @@ class Wizard(Entity):
                     print(f"PETRIFICUS {snafflle_near_goal.get_nearest_enemy_wizard().id}")
 
             else:
-                snaffle = self.get_nearest_snaffle() or [snfl for snfl in game_snaffles.values() if not snfl.is_removed][0]
+                snaffle = self.get_nearest_snaffle() or [snfl for snfl in game.snaffles.values() if not snfl.is_removed][0]
 
                 my_dist_f_mgoal = self.get_distance(my_team.goal)
                 snfl_dist_f_mgoal = snaffle.get_distance(my_team.goal)
@@ -221,6 +228,13 @@ class Bludger(Entity):
     def __init__(self, entity_id, x, y, vx, vy, state):
         super().__init__(entity_id, x, y, vx, vy)
 
+        self.last_target = state #-1 otherwise
+
+    def update_properties(self, x, y, vx, vy):
+        super().update_properties(x, y, vx, vy)
+
+        self.last_target = state
+
 
 class Team:
     def __init__(self, team_id, score=None, magic=None):
@@ -254,11 +268,13 @@ class Game:
             for bludger in self.bludgers.values()
         ]
 
-game_snaffles = {}
-def end_turn():
-    for snf in game_snaffles.values():
-        snf.is_removed = True
+    def end_turn(self):
+        for snf in self.snaffles.values():
+            # print(snf.id,'speed', math.hypot(snf.speed[0], snf.speed[1]), file=sys.stderr, flush=True)
+            snf.is_removed = True
 
+
+game = Game()
 
 # Grab snaffles and try to throw them through the opponent's goal!
 # Move towards a Snaffle and use your team id to determine where you need to throw it.
@@ -294,10 +310,13 @@ while True:
             wizard.update_properties(x, y, vx, vy, state)
 
         elif entity_type == 'SNAFFLE':
-            snaffle = game_snaffles.get(entity_id, Snaffle(entity_id, x, y, vx, vy, state))
-            game_snaffles[entity_id] = snaffle
+            snaffle = game.snaffles.get(entity_id, Snaffle(entity_id, x, y, vx, vy, state))
+            game.snaffles[entity_id] = snaffle
             snaffle.update_properties(x, y, vx, vy, state)
             snaffle.is_removed = False
+
+        elif entity_type == 'BLUDGER':
+            bludger = Bludger(entity_id, x, y, vx, vy, state)
 
 
     
@@ -311,4 +330,4 @@ while True:
         # i.e.: "MOVE x y thrust" or "THROW x y power"
         wizard.act()
 
-    end_turn()
+    game.end_turn()
