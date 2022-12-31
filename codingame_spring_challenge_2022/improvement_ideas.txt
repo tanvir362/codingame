@@ -1,0 +1,6 @@
+- throw monster out of the base according to line from center of the base (no need)
+- if a monster is shielded dont cast spell, defend (done)
+- shield own hero to be protected from opponent heros magic (need improvement)
+- need to think if it's better casting wind or controll while defending inside my base (done)
+- check if there is enough monsters inside enemy base if not go outside and control to enemy base (todo)
+- 

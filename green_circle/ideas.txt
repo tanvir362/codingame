@@ -1,0 +1,9 @@
+
+- 
+- Identify application that goes with my skill sets
+- Start workin on most suitable application first
+
+------------------------------------------------------
+- Track which cards opponent is picking
+- Predict which application opponent is working on
+- Avoid application which opponent may release first
